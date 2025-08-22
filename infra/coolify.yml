@@ -1,0 +1,78 @@
+# Coolify Application Configuration
+version: "3.8"
+
+services:
+  postgres:
+    image: postgres:15
+    environment:
+      POSTGRES_DB: instagram_analysis
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - app-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_data:/data
+    networks:
+      - app-network
+
+  api:
+    image: ghcr.io/your-username/instagram-analysis-api:latest
+    environment:
+      DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD}@postgres:5432/instagram_analysis
+      REDIS_URL: redis://redis:6379
+      APIFY_TOKEN: ${APIFY_TOKEN}
+      GEMINI_API_KEY: ${GEMINI_API_KEY}
+      SECRET_KEY: ${SECRET_KEY}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    networks:
+      - app-network
+    labels:
+      - "coolify.managed=true"
+      - "coolify.type=application"
+      - "coolify.name=instagram-analysis-api"
+      - "traefik.enable=true"
+      - "traefik.http.routers.api.rule=Host(\`api.yourdomain.com\`)"
+      - "traefik.http.routers.api.tls.certresolver=letsencrypt"
+
+  worker:
+    image: ghcr.io/your-username/instagram-analysis-api:latest
+    environment:
+      DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD}@postgres:5432/instagram_analysis
+      REDIS_URL: redis://redis:6379
+      APIFY_TOKEN: ${APIFY_TOKEN}
+      GEMINI_API_KEY: ${GEMINI_API_KEY}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    networks:
+      - app-network
+    command: python -m rq worker --url redis://redis:6379
+    labels:
+      - "coolify.managed=true"
+      - "coolify.type=worker"
+      - "coolify.name=instagram-analysis-worker"
+
+volumes:
+  postgres_data:
+  redis_data:
+
+networks:
+  app-network:
+    driver: bridge

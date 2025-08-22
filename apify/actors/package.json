@@ -1,0 +1,15 @@
+{
+    "name": "instagram-scraper",
+    "version": "1.0.0",
+    "description": "Instagram posts and comments scraper",
+    "main": "instagram_scraper.js",
+    "dependencies": {
+        "apify": "^3.1.0",
+        "puppeteer": "^21.0.0"
+    },
+    "scripts": {
+        "start": "node instagram_scraper.js"
+    },
+    "author": "Your Name",
+    "license": "MIT"
+}
