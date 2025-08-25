@@ -1,5 +1,5 @@
 // Instagram Audience Analysis Frontend
-const API_BASE_URL = '/api/v1';
+const API_BASE_URL = 'https://instagram-api.teabag.online/api/v1';
 
 class InstagramApp {
     constructor() {
@@ -18,7 +18,7 @@ class InstagramApp {
 
     async checkAPIHealth() {
         try {
-            const response = await fetch(`${API_BASE_URL}/health`);
+            const response = await fetch('https://instagram-api.teabag.online/health');
             if (response.ok) {
                 console.log('API is healthy');
             }
