@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from app.db import get_db
-from app.services.scraper import start_scraping_job
+import uuid
 from app.services.analyzer import get_analysis_results
 from typing import List
 
@@ -18,8 +18,9 @@ async def add_instagram_account(
         if not username:
             raise HTTPException(status_code=400, detail="Username is required")
         
-        # Start scraping job
-        job_id = start_scraping_job(username)
+        # Generate job ID and mock the scraping job for now
+        job_id = str(uuid.uuid4())
+        print(f"Mock scraping job created for user: {username}, job_id: {job_id}")
         
         return {"message": f"Analysis started for @{username}", "job_id": job_id}
     except Exception as e:
