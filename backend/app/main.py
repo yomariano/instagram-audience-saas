@@ -9,17 +9,11 @@ app = FastAPI(
     version="1.0.0"
 )
 
+# Configure CORS to allow frontend access
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "https://instagram-app.teabag.online",
-        "http://instagram-app.teabag.online", 
-        "http://localhost:3000",
-        "http://localhost:8080",
-        "https://localhost:3000",
-        "*"  # Allow all origins in development
-    ],
-    allow_credentials=True,
+    allow_origins=["*"],  # Allow all origins for now
+    allow_credentials=False,  # Set to False when using wildcard
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allow_headers=["*"],
 )
@@ -33,3 +27,11 @@ async def root():
 @app.get("/health")
 async def health_check():
     return {"status": "healthy"}
+
+@app.options("/health")
+async def health_options():
+    return {"status": "ok"}
+
+@app.options("/api/v1/{path:path}")
+async def api_options(path: str):
+    return {"status": "ok"}
