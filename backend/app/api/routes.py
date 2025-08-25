@@ -13,14 +13,19 @@ async def add_instagram_account(
     db: Session = Depends(get_db)
 ):
     """Add an Instagram account for analysis"""
-    username = account.get("username")
-    if not username:
-        raise HTTPException(status_code=400, detail="Username is required")
-    
-    # Start scraping job
-    job_id = start_scraping_job(username)
-    
-    return {"message": f"Analysis started for @{username}", "job_id": job_id}
+    try:
+        username = account.get("username")
+        if not username:
+            raise HTTPException(status_code=400, detail="Username is required")
+        
+        # Start scraping job
+        job_id = start_scraping_job(username)
+        
+        return {"message": f"Analysis started for @{username}", "job_id": job_id}
+    except Exception as e:
+        # Log the actual error for debugging
+        print(f"Error in add_instagram_account: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
 
 @router.get("/accounts/{username}/analysis")
 async def get_account_analysis(

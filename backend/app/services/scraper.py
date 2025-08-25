@@ -50,8 +50,12 @@ class ApifyScraper:
 
 def start_scraping_job(username: str):
     """Add scraping job to queue"""
-    job_id = add_job("scrape_instagram", {"username": username})
-    return job_id
+    try:
+        job_id = add_job("scrape_instagram", {"username": username})
+        return job_id
+    except Exception as e:
+        print(f"Error starting scraping job: {str(e)}")
+        raise Exception(f"Failed to start scraping job: {str(e)}")
 
 async def scrape_with_playwright(username: str):
     """Fallback scraper using Playwright"""
