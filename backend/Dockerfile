@@ -10,7 +10,7 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy requirements and install dependencies
-COPY requirements.txt .
+COPY backend/requirements.txt .
 RUN pip install --no-cache-dir --user -r requirements.txt
 
 # Production stage
@@ -30,20 +30,14 @@ COPY --from=builder /root/.local /root/.local
 # Make sure scripts in .local are usable:
 ENV PATH=/root/.local/bin:$PATH
 
-# Install Playwright browsers (only chromium for production)
-RUN playwright install chromium --with-deps
-
-# Create non-root user for security
-RUN groupadd -r appuser && useradd -r -g appuser appuser
+# Skip Playwright for now to avoid dependency issues
+# RUN playwright install chromium --with-deps
 
 # Copy application code
-COPY . .
+COPY backend/ .
 
-# Change ownership to non-root user
-RUN chown -R appuser:appuser /app
-
-# Switch to non-root user
-USER appuser
+# For local development, run as root to avoid permission issues
+# In production, use non-root user
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=30s --start-period=5s --retries=3 \

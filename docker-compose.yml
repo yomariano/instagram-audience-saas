@@ -1,7 +1,7 @@
 version: '3.8'
 
 services:
-  # PostgreSQL Database
+  # PostgreSQL Database (for local development)
   postgres:
     image: postgres:15-alpine
     environment:
@@ -19,8 +19,10 @@ services:
       retries: 5
     networks:
       - app-network
+    profiles:
+      - local
 
-  # Redis Cache
+  # Redis Cache (for local development)
   redis:
     image: redis:7-alpine
     ports:
@@ -30,76 +32,111 @@ services:
       - redis_data:/data
     networks:
       - app-network
+    profiles:
+      - local
 
-  # Backend API
+  # Backend API (Production-ready configuration)
   api:
     build: 
-      context: ./backend
-      dockerfile: Dockerfile
-    ports:
-      - "8000:8000"
+      context: .
+      dockerfile: backend/Dockerfile
     environment:
-      DATABASE_URL: postgresql://postgres:password123@postgres:5432/instagram_analysis
-      REDIS_URL: redis://redis:6379
-      APIFY_TOKEN: ${APIFY_TOKEN:-}
-      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
-      SECRET_KEY: ${SECRET_KEY:-your-secret-key-change-in-production}
+      - NODE_ENV=production
+      - PORT=8000
+      - DATABASE_URL=${DATABASE_URL:-postgresql://postgres:password123@postgres:5432/instagram_analysis}
+      - REDIS_URL=${REDIS_URL:-redis://redis:6379}
+      - APIFY_TOKEN=${APIFY_TOKEN:-}
+      - GEMINI_API_KEY=${GEMINI_API_KEY:-}
+      - SECRET_KEY=${SECRET_KEY:-your-secret-key-change-in-production}
+      # CORS configuration for production
+      - CORS_ALLOWED_ORIGINS=${CORS_ALLOWED_ORIGINS:-https://instagram-app.teabag.online,https://www.instagram-app.teabag.online,https://instagram-api.teabag.online}
+    networks:
+      - coolify
+      - app-network
+    expose:
+      - "8000"  # Only expose to other containers, not to host
+    labels:
+      # Caddy Docker Proxy labels for subdomain
+      - "caddy=instagram-api.teabag.online"
+      - "caddy.reverse_proxy={{upstreams 8000}}"
+      - "caddy.reverse_proxy.health_uri=/health"
+      - "caddy.reverse_proxy.health_interval=5s"
+      - "caddy.reverse_proxy.health_timeout=2s"
+      # Additional reliability settings
+      - "caddy.reverse_proxy.lb_policy=round_robin"
+      - "caddy.reverse_proxy.fail_duration=10s"
+      - "caddy.reverse_proxy.max_fails=3"
+      # Coolify management labels
+      - "coolify.managed=true"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://0.0.0.0:8000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
     depends_on:
       postgres:
         condition: service_healthy
+        required: false  # Allow running without local postgres in production
       redis:
         condition: service_started
-    volumes:
-      - ./backend:/app
-    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
-    networks:
-      - app-network
+        required: false   # Allow running without local redis in production
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 1
 
-  # Worker for background tasks
+  # Worker for background tasks (local development)
   worker:
     build: 
-      context: ./backend
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: backend/Dockerfile
     environment:
-      DATABASE_URL: postgresql://postgres:password123@postgres:5432/instagram_analysis
-      REDIS_URL: redis://redis:6379
-      APIFY_TOKEN: ${APIFY_TOKEN:-}
-      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      - DATABASE_URL=${DATABASE_URL:-postgresql://postgres:password123@postgres:5432/instagram_analysis}
+      - REDIS_URL=${REDIS_URL:-redis://redis:6379}
+      - APIFY_TOKEN=${APIFY_TOKEN:-}
+      - GEMINI_API_KEY=${GEMINI_API_KEY:-}
     depends_on:
       postgres:
         condition: service_healthy
+        required: false
       redis:
         condition: service_started
-    volumes:
-      - ./backend:/app
-    command: python -m rq worker --url redis://redis:6379
+        required: false
+    command: python -m rq worker --url ${REDIS_URL:-redis://redis:6379}
     networks:
       - app-network
+    profiles:
+      - local
 
-  # Frontend
+  # Frontend (Production-ready configuration)
   frontend:
     build:
-      context: ./frontend-simple
-      dockerfile: Dockerfile
-    ports:
-      - "3000:80"
-    depends_on:
-      - api
+      context: .
+      dockerfile: frontend-simple/Dockerfile
+    environment:
+      - API_BASE_URL=${API_BASE_URL:-https://instagram-api.teabag.online/api/v1}
     networks:
+      - coolify
       - app-network
-
-  # Nginx Proxy (optional for local development)
-  nginx:
-    image: nginx:alpine
-    ports:
-      - "80:80"
-    volumes:
-      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
-    depends_on:
-      - api
-      - frontend
-    networks:
-      - app-network
+    expose:
+      - "80"
+    labels:
+      # Caddy Docker Proxy labels for frontend subdomain
+      - "caddy=instagram-app.teabag.online"
+      - "caddy.reverse_proxy={{upstreams 80}}"
+      - "caddy.reverse_proxy.health_uri=/"
+      - "caddy.reverse_proxy.health_interval=10s"
+      - "caddy.reverse_proxy.health_timeout=3s"
+      # Additional reliability settings
+      - "caddy.reverse_proxy.lb_policy=round_robin"
+      - "caddy.reverse_proxy.fail_duration=10s"
+      - "caddy.reverse_proxy.max_fails=3"
+      # Coolify management labels
+      - "coolify.managed=true"
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://0.0.0.0:80/"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
 
 volumes:
   postgres_data:
@@ -108,3 +145,5 @@ volumes:
 networks:
   app-network:
     driver: bridge
+  coolify:
+    external: true

@@ -2,7 +2,7 @@ from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from app.api.routes import router
-# from app.config import settings
+from app.config import settings
 
 app = FastAPI(
     title="Instagram Audience Analysis API",
@@ -11,10 +11,13 @@ app = FastAPI(
 )
 
 # Configure CORS to allow frontend access
+import os
+cors_origins = os.getenv("CORS_ALLOWED_ORIGINS", "*").split(",") if os.getenv("CORS_ALLOWED_ORIGINS") else ["*"]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Allow all origins for now
-    allow_credentials=False,  # Set to False when using wildcard
+    allow_origins=cors_origins,
+    allow_credentials=False,  # Set to False when using wildcard origins
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allow_headers=["*"],
 )

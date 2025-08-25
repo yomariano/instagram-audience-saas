@@ -1,5 +1,5 @@
 // Instagram Audience Analysis Frontend
-const API_BASE_URL = 'https://instagram-api.teabag.online/api/v1';
+const API_BASE_URL = '${API_BASE_URL}';
 
 class InstagramApp {
     constructor() {
