@@ -26,46 +26,57 @@ User Input → Apify Scraper → AI Analysis (Gemini) → PostgreSQL → FastAPI
 
 ## 🚀 Quick Start
 
-### Prerequisites
+### Production Deployment (Coolify)
 
-- Python 3.11+
-- PostgreSQL 15+
-- Redis 7+
-- Apify account
-- Google Cloud account (Gemini API)
+The project uses separate docker-compose files optimized for Coolify deployment:
 
-### Development Setup
+- **`docker-compose.yml`** - API service only (for Coolify API deployment)
+- **`docker-compose.frontend.yml`** - Frontend service only (for Coolify frontend deployment)
+- **`docker-compose.local.yml`** - Complete stack for local development
+
+### Local Development
 
 ```bash
 # Clone repository
-git clone https://github.com/your-username/instagram-audience-saas.git
+git clone https://github.com/yomariano/instagram-audience-saas.git
 cd instagram-audience-saas
 
-# Setup backend
-cd backend
-pip install -r requirements.txt
-
-# Environment variables
+# Copy environment variables
 cp .env.example .env
 # Edit .env with your API keys
 
-# Start services
-cd ../infra
-docker-compose up -d
+# Start all services for local development
+docker compose -f docker-compose.local.yml --profile local up -d
 
-# Run API
-cd ../backend
-uvicorn app.main:app --reload
+# Access the application
+# - Frontend: http://localhost:3000
+# - API: http://localhost:8001 (or 8000 internally)
+# - API Docs: http://localhost:8001/docs
 ```
 
 ### Environment Variables
 
+Required for production deployment:
+
 ```env
-DATABASE_URL=postgresql://user:pass@localhost/instagram_analysis
-REDIS_URL=redis://localhost:6379
+# Database
+DATABASE_URL=postgresql://user:pass@host:port/db
+
+# Cache & Queue  
+REDIS_URL=redis://host:port
+
+# API Keys
 APIFY_TOKEN=your_apify_token
 GEMINI_API_KEY=your_gemini_key
-SECRET_KEY=your_jwt_secret
+
+# Security
+SECRET_KEY=your-secret-key
+
+# CORS (comma-separated domains)
+CORS_ALLOWED_ORIGINS=https://instagram-app.teabag.online,https://www.instagram-app.teabag.online
+
+# Frontend Configuration
+API_BASE_URL=https://instagram-api.teabag.online/api/v1
 ```
 
 ## 📖 Documentation

@@ -1,58 +1,22 @@
 version: '3.8'
 
 services:
-  # PostgreSQL Database (for local development)
-  postgres:
-    image: postgres:15-alpine
-    environment:
-      POSTGRES_DB: instagram_analysis
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: password123
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    ports:
-      - "5432:5432"
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d instagram_analysis"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-    networks:
-      - app-network
-    profiles:
-      - local
-
-  # Redis Cache (for local development)
-  redis:
-    image: redis:7-alpine
-    ports:
-      - "6379:6379"
-    command: redis-server --appendonly yes
-    volumes:
-      - redis_data:/data
-    networks:
-      - app-network
-    profiles:
-      - local
-
-  # Backend API (Production-ready configuration)
   api:
-    build: 
+    build:
       context: .
       dockerfile: backend/Dockerfile
     environment:
       - NODE_ENV=production
       - PORT=8000
-      - DATABASE_URL=${DATABASE_URL:-postgresql://postgres:password123@postgres:5432/instagram_analysis}
-      - REDIS_URL=${REDIS_URL:-redis://redis:6379}
-      - APIFY_TOKEN=${APIFY_TOKEN:-}
-      - GEMINI_API_KEY=${GEMINI_API_KEY:-}
-      - SECRET_KEY=${SECRET_KEY:-your-secret-key-change-in-production}
+      - DATABASE_URL=${DATABASE_URL}
+      - REDIS_URL=${REDIS_URL}
+      - APIFY_TOKEN=${APIFY_TOKEN}
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - SECRET_KEY=${SECRET_KEY}
       # CORS configuration for production
-      - CORS_ALLOWED_ORIGINS=${CORS_ALLOWED_ORIGINS:-https://instagram-app.teabag.online,https://www.instagram-app.teabag.online,https://instagram-api.teabag.online}
+      - CORS_ALLOWED_ORIGINS=${CORS_ALLOWED_ORIGINS:-https://instagram-app.teabag.online,https://www.instagram-app.teabag.online}
     networks:
       - coolify
-      - app-network
     expose:
       - "8000"  # Only expose to other containers, not to host
     labels:
@@ -74,76 +38,8 @@ services:
       timeout: 5s
       retries: 3
       start_period: 30s
-    depends_on:
-      postgres:
-        condition: service_healthy
-        required: false  # Allow running without local postgres in production
-      redis:
-        condition: service_started
-        required: false   # Allow running without local redis in production
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 1
 
-  # Worker for background tasks (local development)
-  worker:
-    build: 
-      context: .
-      dockerfile: backend/Dockerfile
-    environment:
-      - DATABASE_URL=${DATABASE_URL:-postgresql://postgres:password123@postgres:5432/instagram_analysis}
-      - REDIS_URL=${REDIS_URL:-redis://redis:6379}
-      - APIFY_TOKEN=${APIFY_TOKEN:-}
-      - GEMINI_API_KEY=${GEMINI_API_KEY:-}
-    depends_on:
-      postgres:
-        condition: service_healthy
-        required: false
-      redis:
-        condition: service_started
-        required: false
-    command: python -m rq worker --url ${REDIS_URL:-redis://redis:6379}
-    networks:
-      - app-network
-    profiles:
-      - local
-
-  # Frontend (Production-ready configuration)
-  frontend:
-    build:
-      context: .
-      dockerfile: frontend-simple/Dockerfile
-    environment:
-      - API_BASE_URL=${API_BASE_URL:-https://instagram-api.teabag.online/api/v1}
-    networks:
-      - coolify
-      - app-network
-    expose:
-      - "80"
-    labels:
-      # Caddy Docker Proxy labels for frontend subdomain
-      - "caddy=instagram-app.teabag.online"
-      - "caddy.reverse_proxy={{upstreams 80}}"
-      - "caddy.reverse_proxy.health_uri=/"
-      - "caddy.reverse_proxy.health_interval=10s"
-      - "caddy.reverse_proxy.health_timeout=3s"
-      # Additional reliability settings
-      - "caddy.reverse_proxy.lb_policy=round_robin"
-      - "caddy.reverse_proxy.fail_duration=10s"
-      - "caddy.reverse_proxy.max_fails=3"
-      # Coolify management labels
-      - "coolify.managed=true"
-    healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://0.0.0.0:80/"]
-      interval: 15s
-      timeout: 5s
-      retries: 3
-      start_period: 10s
-
-volumes:
-  postgres_data:
-  redis_data:
-
 networks:
-  app-network:
-    driver: bridge
   coolify:
     external: true
