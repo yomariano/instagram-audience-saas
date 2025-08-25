@@ -11,9 +11,16 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=[
+        "https://instagram-app.teabag.online",
+        "http://instagram-app.teabag.online", 
+        "http://localhost:3000",
+        "http://localhost:8080",
+        "https://localhost:3000",
+        "*"  # Allow all origins in development
+    ],
     allow_credentials=True,
-    allow_methods=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allow_headers=["*"],
 )
 
