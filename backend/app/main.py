@@ -2,7 +2,7 @@ from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from app.api.routes import router
-from app.config import settings
+# from app.config import settings
 
 app = FastAPI(
     title="Instagram Audience Analysis API",
