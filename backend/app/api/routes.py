@@ -1,16 +1,15 @@
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy.orm import Session
-from app.db import get_db
+# from sqlalchemy.orm import Session
+# from app.db import get_db
 import uuid
-from app.services.analyzer import get_analysis_results
+# from app.services.analyzer import get_analysis_results
 from typing import List
 
 router = APIRouter()
 
 @router.post("/accounts")
 async def add_instagram_account(
-    account: dict,
-    db: Session = Depends(get_db)
+    account: dict
 ):
     """Add an Instagram account for analysis"""
     try:
@@ -30,17 +29,22 @@ async def add_instagram_account(
 
 @router.get("/accounts/{username}/analysis")
 async def get_account_analysis(
-    username: str,
-    db: Session = Depends(get_db)
+    username: str
 ):
     """Get analysis results for an Instagram account"""
-    results = get_analysis_results(username, db)
-    return results
+    # Mock results for now
+    return {
+        "username": username,
+        "status": "completed", 
+        "followers_count": 1250,
+        "posts_analyzed": 10,
+        "engagement_rate": 3.2,
+        "last_updated": "2024-08-25T10:00:00Z"
+    }
 
 @router.get("/accounts/{username}/demographics")
 async def get_demographics(
-    username: str,
-    db: Session = Depends(get_db)
+    username: str
 ):
     """Get demographic breakdown for account followers"""
     # Implementation for demographic analysis
